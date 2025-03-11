@@ -1,21 +1,4 @@
-#!/usr/bin/python3
-#
-# Copyright (C) 2019 Google Inc.
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import plspm.config as c, pandas as pd, cupy as cp, plspm.inner_model as im, plspm.outer_model as om, time
+import plspm.config as c, pandas as pd, numpy as np, plspm.inner_model as im, plspm.outer_model as om, time
 from multiprocessing import Process, Queue
 from queue import Empty
 from plspm.weights import WeightsCalculatorFactory
@@ -53,7 +36,7 @@ class BootstrapProcess(Process):
         estimator = Estimator(self.__config)
         for i in range(0, self.__iterations):
             try:
-                boot_observations = cp.random.randint(observations, size=observations)
+                boot_observations = np.random.randint(observations, size=observations)
                 _final_data, _scores, _weights = estimator.estimate(self.__calculator, self.__data.iloc[boot_observations, :])
                 weights = pd.concat([weights, _weights.T], ignore_index = True)
                 inner_model = im.InnerModel(self.__config.path(), _scores)
