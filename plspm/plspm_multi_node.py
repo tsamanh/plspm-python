@@ -35,7 +35,7 @@ class Plspm_Multi_Nodes:
 
     def __init__(self, data: pd.DataFrame, config: c.Config, scheme: Scheme = Scheme.CENTROID,
                  iterations: int = 100, tolerance: float = 0.000001, bootstrap: bool = False,
-                 bootstrap_iterations: int = 100, processes: int = 2):
+                 bootstrap_iterations: int = 100, processes: int = None):
         """Creates an instance of the path model calculator.
 
         Args:
@@ -58,8 +58,6 @@ class Plspm_Multi_Nodes:
         assert scheme in Scheme
         if bootstrap_iterations < 10:
             bootstrap_iterations = 100
-        assert processes > 0
-        assert bootstrap_iterations % processes == 0
 
         estimator = Estimator(config)
         filtered_data = config.filter(data)
