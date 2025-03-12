@@ -154,7 +154,7 @@ class Plspm_Multi_Nodes:
         """
         return self.__unidimensionality.summary()
 
-    def bootstrap(self) -> Bootstrap:
+    def bootstrap(self) -> Bootstrap_Multi_Nodes:
         """Gets the results of bootstrap validation, if requested
 
         Returns:

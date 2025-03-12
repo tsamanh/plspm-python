@@ -64,7 +64,7 @@ class BootstrapWorker(Process):
         self.queue.put(results)
 
 
-class Bootstrap_Multi_Node:
+class Bootstrap_Multi_Nodes:
     """Manages the execution of bootstrap validation across multiple nodes and cores."""
     def __init__(self, config: c.Config, data: pd.DataFrame, inner_model: im.InnerModel, outer_model: om.OuterModel,
                  calculator: WeightsCalculatorFactory, iterations: int, num_processes: int = None):
@@ -83,7 +83,7 @@ class Bootstrap_Multi_Node:
 
 
         # Get the number of CPU cores on the current node
-        num_cores = cpu_count() if num_cores is None else num_processes
+        num_cores = cpu_count() if num_processes is None else num_processes
         print(f"Node {rank}: Using {num_cores} CPU cores. Distributing {iterations_per_rank} iterations across workers.")
 
 
@@ -101,7 +101,7 @@ class Bootstrap_Multi_Node:
         processes = []
 
         # Start worker processes within the node
-        for _ in range(num_cores):
+        for i in range(num_cores):
             worker_iterations = base_iterations + (1 if i < extra_iterations else 0)
             process = BootstrapWorker(queue, config, data, inner_model, calculator, worker_iterations)
             process.start()
