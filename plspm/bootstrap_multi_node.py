@@ -101,7 +101,7 @@ class Bootstrap_Multi_Nodes:
         processes = []
 
         # Start worker processes within the node
-        for i in range(num_cores):
+        for i in range(0, num_cores):
             worker_iterations = base_iterations + (1 if i < extra_iterations else 0)
             process = BootstrapWorker(queue, config, data, inner_model, calculator, worker_iterations)
             process.start()
@@ -111,7 +111,7 @@ class Bootstrap_Multi_Nodes:
         running = list(processes)
         while running:
             try:
-                while True:
+                while not queue.empty()::
                     results = queue.get(False)
                     weights = pd.concat([weights, results["weights"]])
                     r_squared = pd.concat([r_squared, results["r_squared"]])
@@ -126,7 +126,12 @@ class Bootstrap_Multi_Nodes:
             running = [process for process in running if process.is_alive()]
 
         # MPI: Gather results at Rank 0
-        all_results = comm.gather({"weights": weights, "r_squared": r_squared, "total_effects": total_effects, "paths": paths, "loadings": loadings}, root=0)
+        try:
+            all_results = comm.gather({"weights": weights, "r_squared": r_squared, 
+                               "total_effects": total_effects, "paths": paths, "loadings": loadings}, root=0)
+        except Exception as e:
+            print(f"Node {MPI.COMM_WORLD.Get_rank()} failed during gather: {e}")
+            comm.Abort(1)  # Exit cleanly if MPI fails
 
         if rank == 0:
             # Merge results from all nodes
