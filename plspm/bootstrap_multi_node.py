@@ -111,7 +111,7 @@ class Bootstrap_Multi_Nodes:
         running = list(processes)
         while running:
             try:
-                while not queue.empty()::
+                while not queue.empty():
                     results = queue.get(False)
                     weights = pd.concat([weights, results["weights"]])
                     r_squared = pd.concat([r_squared, results["r_squared"]])
