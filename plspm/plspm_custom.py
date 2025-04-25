@@ -19,12 +19,12 @@ import plspm.inner_summary as pis, plspm.config as c
 import pandas as pd, numpy as np, plspm.weights as w, plspm.outer_model as om, plspm.inner_model as im
 from plspm.scheme import Scheme
 from plspm.unidimensionality import Unidimensionality
-from plspm.bootstrap_multi_node import Bootstrap_Multi_Nodes
 from plspm.estimator import Estimator
+from plspm.bootstrap_with_seed import Bootstrap
 
 
 
-class Plspm_Multi_Nodes:
+class Plspm_Custom:
     """Estimates path models with latent variables using partial least squares algorithm
 
     Create an instance of this class in order to estimate a path model using the partial least squares algorithm.
@@ -35,7 +35,7 @@ class Plspm_Multi_Nodes:
 
     def __init__(self, data: pd.DataFrame, config: c.Config, scheme: Scheme = Scheme.CENTROID,
                  iterations: int = 100, tolerance: float = 0.000001, bootstrap: bool = False,
-                 bootstrap_iterations: int = 100, processes: int = None):
+                 bootstrap_iterations: int = 100, processes: int = None, seed: int = None, sign_change: bool = False):
         """Creates an instance of the path model calculator.
 
         Args:
@@ -58,6 +58,7 @@ class Plspm_Multi_Nodes:
         assert scheme in Scheme
         if bootstrap_iterations < 10:
             bootstrap_iterations = 100
+        # assert bootstrap_iterations % processes == 0
 
         estimator = Estimator(config)
         filtered_data = config.filter(data)
@@ -77,8 +78,10 @@ class Plspm_Multi_Nodes:
         if bootstrap:
             if (filtered_data.shape[0] < 10):
                 raise Exception("Bootstrapping could not be performed, at least 10 observations are required.")
-            self.__bootstrap = Bootstrap_Multi_Nodes(config, filtered_data, self.__inner_model, self.__outer_model, calculator,
-                                         bootstrap_iterations, processes)
+            self.__bootstrap = Bootstrap(config, filtered_data, self.__inner_model, self.__outer_model, calculator,
+                                         bootstrap_iterations, processes, seed, sign_change)
+
+        self.__calculator = calculator
 
     def scores(self) -> pd.DataFrame:
         """Gets the latent variable scores
@@ -154,7 +157,7 @@ class Plspm_Multi_Nodes:
         """
         return self.__unidimensionality.summary()
 
-    def bootstrap(self) -> Bootstrap_Multi_Nodes:
+    def bootstrap(self) -> Bootstrap:
         """Gets the results of bootstrap validation, if requested
 
         Returns:
@@ -166,3 +169,9 @@ class Plspm_Multi_Nodes:
         if self.__bootstrap is None:
             raise Exception("To perform bootstrap validation, set the parameter bootstrap to True when calling Plspm")
         return self.__bootstrap
+
+    def inner_model_raw(self):
+        return self.__inner_model
+
+    def outer_model_raw(self):
+        return self.__outer_model

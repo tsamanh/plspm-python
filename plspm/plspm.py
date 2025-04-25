@@ -34,7 +34,7 @@ class Plspm:
 
     def __init__(self, data: pd.DataFrame, config: c.Config, scheme: Scheme = Scheme.CENTROID,
                  iterations: int = 100, tolerance: float = 0.000001, bootstrap: bool = False,
-                 bootstrap_iterations: int = 100, processes: int = 2):
+                 bootstrap_iterations: int = 100, processes: int = 2, seed: int = None):
         """Creates an instance of the path model calculator.
 
         Args:
@@ -79,7 +79,7 @@ class Plspm:
             if (filtered_data.shape[0] < 10):
                 raise Exception("Bootstrapping could not be performed, at least 10 observations are required.")
             self.__bootstrap = Bootstrap(config, filtered_data, self.__inner_model, self.__outer_model, calculator,
-                                         bootstrap_iterations, processes)
+                                         bootstrap_iterations, processes, seed)
 
     def scores(self) -> pd.DataFrame:
         """Gets the latent variable scores
