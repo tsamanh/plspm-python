@@ -95,7 +95,7 @@ class BootstrapProcess(Process):
                 paths = pd.concat([paths,
                                    inner_model.effects().loc[:, "direct"].to_frame().T], ignore_index=True)
                 boot_loadings = (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1).to_frame().T
-                #loadings = pd.concat([loadings, boot_loadings], ignore_index=True)
+                loadings = pd.concat([loadings, boot_loadings], ignore_index=True)
                 raw_scores_list.append(_scores)
                 final_data_list.append(_final_data)
 
@@ -122,15 +122,6 @@ class BootstrapProcess(Process):
                         sgch._boot_naive_sign_change(_weights, boot_loadings.T, inner_model.path_coefficients(), original_weights, original_loadings, original_path)):
                         nc_df.append(boot_nc_df)
 
-                # for cl_df, boot_cl_df in zip([cl_scores, cl_weights, cl_loadings, cl_path_coef, cl_effects, cl_path_coef_recalc, cl_effects_recalc], sgch._boot_construct_level_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)):
-                #     cl_df.append(boot_cl_df)
-                # di_results = sgch._boot_dominant_indicator_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)
-                # for di_df, boot_di_df in zip([di_scores, di_weights, di_loadings, di_path_coef, di_effects, di_path_coef_recalc, di_effects_recalc], di_results):
-                #     di_df.append(boot_di_df)
-                # for cs_df, boot_cs_df in zip([cs_scores, cs_weights, cs_loadings, cs_path_coef, cs_effects, cs_path_coef_recalc, cs_effects_recalc], sgch._boot_construct_scores_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, _final_data, self.__original_outer_model)):
-                #     cs_df.append(boot_cs_df)
-                # for nc_df, boot_nc_df in zip([nc_weights, nc_loadings, nc_path_coef], sgch._boot_naive_sign_change(_weights, boot_loadings.T, inner_model.path_coefficients(), self.__original_outer_model.loc[:,"weight"], self.__original_outer_model.loc[:,"loading"], self.__inner_model.path_coefficients())):
-                #     nc_df.append(boot_nc_df)
             except:
                 pass
         results = {}
@@ -138,7 +129,7 @@ class BootstrapProcess(Process):
         results["r_squared"] = r_squared
         results["total_effects"] = total_effects
         results["paths"] = paths
-        results["loadings"] = boot_loadings
+        results["loadings"] = loadings
         results["scores"] = raw_scores_list
         results["final_data"] = final_data_list
         results["inner_model"] = inner_model ##Delete later
