@@ -289,7 +289,7 @@ class Bootstrap:
         self.__weights = _create_summary(weights, outer_model.model().loc[:, "weight"])
         self.__r_squared = _create_summary(r_squared, self.__original_inner_model.r_squared()).loc[self.__original_inner_model.endogenous(), :]
         self.__total_effects = _create_summary(total_effects, self.__original_inner_model.effects().loc[:, "total"])
-        self.__paths = self.__original_inner_model.effects().loc[:, "direct"]
+        self.__paths = _create_summary(paths, self.__original_inner_model.effects().loc[:, "direct"])
         self.__loading = _create_summary(loadings, outer_model.model().loc[:, "loading"])
         self.__seed = base_seed
         self.__raw_scores = {f"scores_{i}": raw_scores[i] for i in range(len(raw_scores))}
@@ -298,7 +298,7 @@ class Bootstrap:
         self.__raw_loadings = loadings
         self.__boot_inner_model = boot_inner_model
         self.__sign_change = sign_change
-
+        
         if sign_change:
             # sign changes objects
             self.__nc_loadings = {f"nc_loadings_{i}": nc_loadings[i] for i in range(len(nc_loadings))}
@@ -352,7 +352,8 @@ class Bootstrap:
 
     def paths(self) -> pd.DataFrame:
         """Direct effects for paths calculated from bootstrap validation."""
-        return self.__paths[self.__paths["mean"] != 0]
+        print("kiki dep trai")
+        return self.__paths
 
     def loading(self) -> pd.DataFrame:
         """Loadings of manifest variables calculated from bootstrap validation."""
