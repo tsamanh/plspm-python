@@ -289,7 +289,7 @@ class Bootstrap:
         self.__weights = _create_summary(weights, outer_model.model().loc[:, "weight"])
         self.__r_squared = _create_summary(r_squared, self.__original_inner_model.r_squared()).loc[self.__original_inner_model.endogenous(), :]
         self.__total_effects = _create_summary(total_effects, self.__original_inner_model.effects().loc[:, "total"])
-        self.__paths = _create_summary(paths, self.__original_inner_model.effects().loc[:, "direct"])
+        self.__paths = self.__original_inner_model.effects().loc[:, "direct"]
         self.__loading = _create_summary(loadings, outer_model.model().loc[:, "loading"])
         self.__seed = base_seed
         self.__raw_scores = {f"scores_{i}": raw_scores[i] for i in range(len(raw_scores))}
