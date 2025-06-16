@@ -416,7 +416,7 @@ class Bootstrap:
     @require_sign_change
     def boot_cl_effects_recalc(self):
         return self.__cl_effects_recalc
-
+    @require_sign_change
     def boot_di_weights(self):
         if not self.__sign_change:
             raise ValueError("Sign change is not enabled. Cannot return sign change objects.")
@@ -458,4 +458,8 @@ class Bootstrap:
     def boot_cs_weights(self):
         return self.__cs_weights
     
+    @require_sign_change
+    def boot_cs_path_coef(self):
+        return self.__cs_path_coef
+
 
