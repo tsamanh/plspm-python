@@ -79,7 +79,7 @@ class Plspm:
             if (filtered_data.shape[0] < 10):
                 raise Exception("Bootstrapping could not be performed, at least 10 observations are required.")
             self.__bootstrap = Bootstrap(config, filtered_data, self.__inner_model, self.__outer_model, calculator,
-                                         bootstrap_iterations, processes, seed)
+                                         bootstrap_iterations, processes)
 
     def scores(self) -> pd.DataFrame:
         """Gets the latent variable scores
