@@ -7,6 +7,7 @@ import secrets
 import statsmodels.api as sm
 from collections import defaultdict
 import plspm.sign_change as sgch
+import copy
 
 
 def _create_summary(data: pd.DataFrame, original):
@@ -177,6 +178,7 @@ class Bootstrap:
     """
     def __init__(self, config: c.Config, data: pd.DataFrame, inner_model: im.InnerModel, outer_model: om.OuterModel,
                  calculator: WeightsCalculatorFactory, iterations: int, num_processes: int, seed: int = None, sign_change: bool = False ):
+        self.__original_inner_model = copy.deepcopy(inner_model)
         weights = pd.DataFrame(columns=data.columns, dtype="float")
         r_squared = pd.DataFrame(columns=inner_model.r_squared().index, dtype="float")
         total_effects = pd.DataFrame(columns=inner_model.effects().index, dtype="float")
@@ -243,6 +245,7 @@ class Bootstrap:
                     loadings = pd.concat([loadings, results["loadings"]])
                     raw_scores.extend(results["scores"])
                     final_data.extend(results["final_data"])
+                    boot_inner_model = results["inner_model"]
                     
                     if sign_change:
                         # naive sign change
@@ -284,16 +287,16 @@ class Bootstrap:
             running = [process for process in running if process.is_alive()]
 
         self.__weights = _create_summary(weights, outer_model.model().loc[:, "weight"])
-        self.__r_squared = _create_summary(r_squared, inner_model.r_squared()).loc[inner_model.endogenous(), :]
-        self.__total_effects = _create_summary(total_effects, inner_model.effects().loc[:, "total"])
-        self.__paths = _create_summary(paths, inner_model.effects().loc[:, "direct"])
+        self.__r_squared = _create_summary(r_squared, self.__original_inner_model.r_squared()).loc[self.__original_inner_model.endogenous(), :]
+        self.__total_effects = _create_summary(total_effects, self.__original_inner_model.effects().loc[:, "total"])
+        self.__paths = _create_summary(paths, self.__original_inner_model.effects().loc[:, "direct"])
         self.__loading = _create_summary(loadings, outer_model.model().loc[:, "loading"])
         self.__seed = base_seed
         self.__raw_scores = {f"scores_{i}": raw_scores[i] for i in range(len(raw_scores))}
         self.__final_data = {f"final_data_{i}": final_data[i] for i in range(len(final_data))}
         self.__raw_weights = weights
         self.__raw_loadings = loadings
-        self.__boot_inner_model = inner_model
+        self.__boot_inner_model = boot_inner_model
         self.__sign_change = sign_change
 
         if sign_change:
