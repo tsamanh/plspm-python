@@ -243,7 +243,6 @@ class Bootstrap:
                     loadings = pd.concat([loadings, results["loadings"]])
                     raw_scores.extend(results["scores"])
                     final_data.extend(results["final_data"])
-                    inner_model = results["inner_model"]
                     
                     if sign_change:
                         # naive sign change
