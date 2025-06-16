@@ -79,7 +79,7 @@ class BootstrapProcess(Process):
         original_loadings = self.__original_outer_model.loc[:, "loading"].copy()
         original_path = self.__inner_model.path_coefficients().copy()
         observations = self.__data.shape[0]
-        estimator = Estimator(self.__config).copy()
+        estimator = Estimator(self.__config)
 
         rng = np.random.default_rng(self.__seed)
 
