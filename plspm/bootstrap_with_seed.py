@@ -352,7 +352,6 @@ class Bootstrap:
 
     def paths(self) -> pd.DataFrame:
         """Direct effects for paths calculated from bootstrap validation."""
-        print("kiki dep trai")
         return self.__paths
 
     def loading(self) -> pd.DataFrame:
