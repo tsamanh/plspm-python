@@ -348,8 +348,8 @@ class Bootstrap:
         return self.__r_squared
     
     def r_squared_list(self) -> pd.DataFrame:
-    """R squared for latent variables calculated from bootstrap validation."""
-    return self.__r_squared_list
+        """R squared for latent variables calculated from bootstrap validation."""
+        return self.__r_squared_list
 
 
     def total_effects(self) -> pd.DataFrame:
