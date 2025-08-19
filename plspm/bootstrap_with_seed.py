@@ -187,6 +187,7 @@ class Bootstrap:
         loadings = pd.DataFrame(columns=data.columns, dtype="float")
         raw_scores = []
         final_data = []
+        boot_inner_model = []
         
         if sign_change:
             nc_loadings = []
