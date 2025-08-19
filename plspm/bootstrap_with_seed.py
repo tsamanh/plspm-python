@@ -42,6 +42,7 @@ class BootstrapProcess(Process):
         loadings = pd.DataFrame(columns=self.__data.columns, dtype="float")
         raw_scores_list = []
         final_data_list = []
+        inner_model_effects = []
 
         if self.__sign_change:
             #naive sign change objects
@@ -99,7 +100,7 @@ class BootstrapProcess(Process):
                 loadings = pd.concat([loadings, boot_loadings], ignore_index=True)
                 raw_scores_list.append(_scores)
                 final_data_list.append(_final_data)
-
+                inner_model_effects.append(inner_model.effects())
 
                 if self.__sign_change:
                     for cl_df, boot_cl_df in zip(
@@ -133,7 +134,7 @@ class BootstrapProcess(Process):
         results["loadings"] = loadings
         results["scores"] = raw_scores_list
         results["final_data"] = final_data_list
-        results["inner_model"] = inner_model ##Delete later
+        results["inner_model"] = inner_model_effects 
 
         if self.__sign_change:
             #nc
