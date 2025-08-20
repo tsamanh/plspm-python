@@ -113,7 +113,7 @@ def _boot_construct_level_change(config: c.Config, boot_inner_model: im.InnerMod
         for path in effects_df.index:
             endo = effects_df.at[path, "to"]
             exo = effects_df.at[path, "from"]
-            if flag.at["flag", endo] and flag.at["flag", exo]:
+            if flag.at["flag", endo] ^ flag.at["flag", exo]:
                 boot_cs_path_coefficients.at[endo,exo] = boot_cs_path_coefficients.at[endo,exo] * (-1)
         
         boot_cl_effects = _effects(boot_cl_path_coefficients)
@@ -185,7 +185,7 @@ def _boot_dominant_indicator_change(config: c.Config, boot_inner_model: im.Inner
         for path in effects_df.index:
             endo = effects_df.at[path, "to"]
             exo = effects_df.at[path, "from"]
-            if flag.at["flag", endo] and flag.at["flag", exo]:
+            if flag.at["flag", endo] ^ flag.at["flag", exo]:
                 boot_cs_path_coefficients.at[endo,exo] = boot_cs_path_coefficients.at[endo,exo] * (-1)
         
         boot_di_effects = _effects(boot_di_path_coefficients)
@@ -262,7 +262,7 @@ def _boot_construct_scores_change(config: c.Config, boot_inner_model: im.InnerMo
         for path in effects_df.index:
             endo = effects_df.at[path, "to"]
             exo = effects_df.at[path, "from"]
-            if flag.at["flag", endo] and flag.at["flag", exo]:
+            if flag.at["flag", endo] ^ flag.at["flag", exo]:
                 boot_cs_path_coefficients.at[endo,exo] = boot_cs_path_coefficients.at[endo,exo] * (-1)
 
 
