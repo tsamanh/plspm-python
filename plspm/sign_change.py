@@ -114,7 +114,7 @@ def _boot_construct_level_change(config: c.Config, boot_inner_model: im.InnerMod
             endo = effects_df.at[path, "to"]
             exo = effects_df.at[path, "from"]
             if flag.at["flag", endo] ^ flag.at["flag", exo]:
-                boot_cs_path_coefficients.at[endo,exo] = boot_cs_path_coefficients.at[endo,exo] * (-1)
+                boot_cl_path_coefficients.at[endo,exo] = boot_cl_path_coefficients.at[endo,exo] * (-1)
         
         boot_cl_effects = _effects(boot_cl_path_coefficients)
 
@@ -166,11 +166,12 @@ def _boot_dominant_indicator_change(config: c.Config, boot_inner_model: im.Inner
             measurement_model[lv] = items
 
         #Get the original highest loadings, compare and flip if needed
-        highest_loadings_list = {}
         for lv, items in measurement_model.items():
             lding = original_loadings.loc[items]
-            highest_loadings_list[lv] = lding.idxmax()
-            if (boot_di_loadings.loc[:,lding.idxmax()] * lding.max()).loc[0] < 0:
+            dominant = lding.abs().idxmax()
+            original_val = float(lding.loc[dominant])
+            boot_val = float(boot_di_loadings.loc[:, dominant].iloc[0])
+            if np.sign(original_val) != np.sign(boot_val):
                 #Multiple the bootstrapped loadings, scores, weights by -1
                 boot_di_weights.loc[:,items] = boot_weights.loc[:,items] * (-1)
                 boot_di_loadings.loc[:,items] = boot_loadings.loc[:,items] * (-1)
@@ -186,7 +187,7 @@ def _boot_dominant_indicator_change(config: c.Config, boot_inner_model: im.Inner
             endo = effects_df.at[path, "to"]
             exo = effects_df.at[path, "from"]
             if flag.at["flag", endo] ^ flag.at["flag", exo]:
-                boot_cs_path_coefficients.at[endo,exo] = boot_cs_path_coefficients.at[endo,exo] * (-1)
+                boot_di_path_coefficients.at[endo,exo] = boot_di_path_coefficients.at[endo,exo] * (-1)
         
         boot_di_effects = _effects(boot_di_path_coefficients)
 

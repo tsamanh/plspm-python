@@ -188,7 +188,7 @@ class Bootstrap:
         raw_scores = []
         final_data = []
         boot_inner_model = []
-        
+
         if sign_change:
             nc_loadings = []
             nc_weights = []
@@ -385,6 +385,7 @@ class Bootstrap:
         return self.__raw_loadings
 
     def boot_inner_model(self):
+        print("new")
         return self.__boot_inner_model
     
     @require_sign_change
