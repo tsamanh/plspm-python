@@ -301,7 +301,7 @@ class Bootstrap:
         self.__raw_loadings = loadings
         self.__boot_inner_model = boot_inner_model
         self.__sign_change = sign_change
-        
+
         if sign_change:
             # sign changes objects
             self.__nc_loadings = {f"nc_loadings_{i}": nc_loadings[i] for i in range(len(nc_loadings))}
@@ -472,5 +472,3 @@ class Bootstrap:
     @require_sign_change
     def boot_cs_path_coef(self):
         return self.__cs_path_coef
-
-

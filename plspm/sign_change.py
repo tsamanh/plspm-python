@@ -241,10 +241,11 @@ def _boot_construct_scores_change(config: c.Config, boot_inner_model: im.InnerMo
         flag = pd.DataFrame(columns=items_df.columns, dtype="bool", index=["flag"])
 
         for lv, indi in measurement_model.items():
-            indi_original_weight = original_outer_weights.loc[indi]
-            new_scores = boot_data[indi] @ indi_original_weight
-            sum_of_scores = new_scores + boot_cs_scores[lv]
-            diff_of_scores = new_scores - boot_cs_scores[lv]
+            w0 = original_outer_weights.loc[indi]
+            new_scores = (boot_data[indi] @ w0).to_numpy()
+            score_boot = boot_cs_score[lv].to_numpy()
+            sum_of_scores = new_scores + score_boot
+            diff_of_scores = new_scores - score_boot
 
             if abs(sum_of_scores.sum()) < abs(diff_of_scores.sum()):
                 #Multiply the bootstrapped loadings, scores, weights by -1
