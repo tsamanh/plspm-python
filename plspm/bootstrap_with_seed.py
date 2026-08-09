@@ -1,11 +1,9 @@
-import plspm.config as c, pandas as pd, numpy as np, plspm.inner_model as im, plspm.outer_model as om, time
+import plspm.config as c, pandas as pd, numpy as np, plspm.inner_model as im, plspm.outer_model as om
 from multiprocessing import Process, Queue, cpu_count
-from queue import Empty
 from plspm.weights import WeightsCalculatorFactory
 from plspm.estimator import Estimator
 import secrets
-import statsmodels.api as sm
-from collections import defaultdict
+import warnings
 import plspm.sign_change as sgch
 import copy
 
@@ -22,9 +20,10 @@ def _create_summary(data: pd.DataFrame, original):
 
 
 class BootstrapProcess(Process):
-    def __init__(self, queue: Queue, config: c.Config, data: pd.DataFrame, inner_model: im.InnerModel, outer_model: om.OuterModel, calculator: WeightsCalculatorFactory, iterations: int, seed: int, sign_change: bool = False,):
+    def __init__(self, queue: Queue, index: int, config: c.Config, data: pd.DataFrame, inner_model: im.InnerModel, outer_model: om.OuterModel, calculator: WeightsCalculatorFactory, iterations: int, seed: int, sign_change: bool = False,):
         super(BootstrapProcess, self).__init__()
         self.__queue = queue
+        self.__index = index
         self.__config = config
         self.__data = data
         self.__inner_model = inner_model
@@ -85,48 +84,58 @@ class BootstrapProcess(Process):
 
         rng = np.random.default_rng(self.__seed)
 
+        failures = 0
         for i in range(0, self.__iterations):
             try:
                 boot_observations = rng.integers(0, observations, size=observations)
                 _final_data, _scores, _weights = estimator.estimate(self.__calculator, self.__data.iloc[boot_observations, :])
-                weights = pd.concat([weights, _weights.T], ignore_index = True)
                 inner_model = im.InnerModel(self.__config.path(), _scores)
-                r_squared = pd.concat([r_squared, inner_model.r_squared().to_frame().T], ignore_index=True)
-                total_effects = pd.concat([total_effects,
-                                           inner_model.effects().loc[:, "total"].to_frame().T], ignore_index=True)
-                paths = pd.concat([paths,
-                                   inner_model.effects().loc[:, "direct"].to_frame().T], ignore_index=True)
                 boot_loadings = (_scores.apply(lambda s: _final_data.corrwith(s)) * self.__config.odm(self.__config.path())).sum(axis=1).to_frame().T
-                loadings = pd.concat([loadings, boot_loadings], ignore_index=True)
-                raw_scores_list.append(_scores)
-                final_data_list.append(_final_data)
-                inner_model_effects.append(inner_model.effects())
 
                 if self.__sign_change:
-                    for cl_df, boot_cl_df in zip(
-                        [cl_scores, cl_weights, cl_loadings, cl_path_coef, cl_effects, cl_path_coef_recalc, cl_effects_recalc],
-                        sgch._boot_construct_level_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)):
-                        cl_df.append(boot_cl_df)
+                    cl_results = sgch._boot_construct_level_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)
+                    di_results = sgch._boot_dominant_indicator_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)
+                    cs_results = sgch._boot_construct_scores_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, _final_data, self.__original_outer_model)
+                    nc_results = sgch._boot_naive_sign_change(_weights.squeeze(), boot_loadings.squeeze(), inner_model.path_coefficients(), original_weights, original_loadings, original_path)
+            except Exception:
+                failures += 1
+                continue
 
-                    for di_df, boot_di_df in zip(
-                        [di_scores, di_weights, di_loadings, di_path_coef, di_effects, di_path_coef_recalc, di_effects_recalc],
-                        sgch._boot_dominant_indicator_change(self.__config, inner_model, _weights.T, boot_loadings, _scores, self.__original_outer_model)):
-                        di_df.append(boot_di_df)
+            # Everything succeeded: append all results so the collections stay aligned
+            weights = pd.concat([weights, _weights.T], ignore_index=True)
+            r_squared = pd.concat([r_squared, inner_model.r_squared().to_frame().T], ignore_index=True)
+            total_effects = pd.concat([total_effects,
+                                       inner_model.effects().loc[:, "total"].to_frame().T], ignore_index=True)
+            paths = pd.concat([paths,
+                               inner_model.effects().loc[:, "direct"].to_frame().T], ignore_index=True)
+            loadings = pd.concat([loadings, boot_loadings], ignore_index=True)
+            raw_scores_list.append(_scores)
+            final_data_list.append(_final_data)
+            inner_model_effects.append(inner_model.effects())
 
-                    for cs_df, boot_cs_df in zip(
-                        [cs_scores, cs_weights, cs_loadings, cs_path_coef, cs_effects, cs_path_coef_recalc, cs_effects_recalc],
-                        sgch._boot_construct_scores_change(
-                            self.__config, inner_model, _weights.T, boot_loadings, _scores, _final_data, self.__original_outer_model)):
-                        cs_df.append(boot_cs_df)
+            if self.__sign_change:
+                for cl_df, boot_cl_df in zip(
+                    [cl_scores, cl_weights, cl_loadings, cl_path_coef, cl_effects, cl_path_coef_recalc, cl_effects_recalc],
+                    cl_results):
+                    cl_df.append(boot_cl_df)
 
-                    for nc_df, boot_nc_df in zip(
-                        [nc_weights, nc_loadings, nc_path_coef],
-                        sgch._boot_naive_sign_change(_weights, boot_loadings.T, inner_model.path_coefficients(), original_weights, original_loadings, original_path)):
-                        nc_df.append(boot_nc_df)
+                for di_df, boot_di_df in zip(
+                    [di_scores, di_weights, di_loadings, di_path_coef, di_effects, di_path_coef_recalc, di_effects_recalc],
+                    di_results):
+                    di_df.append(boot_di_df)
 
-            except:
-                pass
+                for cs_df, boot_cs_df in zip(
+                    [cs_scores, cs_weights, cs_loadings, cs_path_coef, cs_effects, cs_path_coef_recalc, cs_effects_recalc],
+                    cs_results):
+                    cs_df.append(boot_cs_df)
+
+                for nc_df, boot_nc_df in zip(
+                    [nc_weights, nc_loadings, nc_path_coef],
+                    nc_results):
+                    nc_df.append(boot_nc_df)
+
         results = {}
+        results["failures"] = failures
         results["weights"] = weights
         results["r_squared"] = r_squared
         results["total_effects"] = total_effects
@@ -169,7 +178,7 @@ class BootstrapProcess(Process):
             results["cs_path_coef_recalc"] = cs_path_coef_recalc
 
 
-        self.__queue.put(results)
+        self.__queue.put((self.__index, results))
 
 
 class Bootstrap:
@@ -231,15 +240,22 @@ class Bootstrap:
             base_iteration = iterations // num_cores
             extra_iteration = iterations % num_cores
             worker_iterations = base_iteration + (1 if t < extra_iteration else 0)
-            process = BootstrapProcess(queue, config, data, inner_model, outer_model, calculator, worker_iterations, process_seed, sign_change)
+            process = BootstrapProcess(queue, t, config, data, inner_model, outer_model, calculator, worker_iterations, process_seed, sign_change)
             process.start()
             processes.append(process)
 
-        running = list(processes)
-        while running:
-            try:
-                while True:
-                    results = queue.get(False)
+        # Collect exactly one result per worker (blocking), then order by process index
+        # so results are deterministic regardless of which worker finishes first.
+        collected = [None] * num_cores
+        for _ in range(num_cores):
+            index, results = queue.get()
+            collected[index] = results
+        for process in processes:
+            process.join()
+
+        failures = 0
+        for results in collected:
+                    failures += results["failures"]
                     weights = pd.concat([weights, results["weights"]])
                     r_squared = pd.concat([r_squared, results["r_squared"]])
                     total_effects = pd.concat([total_effects, results["total_effects"]])
@@ -281,12 +297,11 @@ class Bootstrap:
                         cs_effects.extend(results["cs_effects"])
                         cs_effects_recalc.extend(results["cs_effects_recalc"])
                         cs_path_coef_recalc.extend(results["cs_path_coef_recalc"])
-            except Empty:
-                pass
-            time.sleep(1)
-            if not queue.empty():
-                continue
-            running = [process for process in running if process.is_alive()]
+
+        if failures > 0:
+            warnings.warn(f"{failures} of {iterations} bootstrap iterations failed and were dropped; "
+                          f"summaries are based on {iterations - failures} samples.")
+        self.__failures = failures
 
         self.__weights = _create_summary(weights, outer_model.model().loc[:, "weight"])
         self.__r_squared = _create_summary(r_squared, self.__original_inner_model.r_squared()).loc[self.__original_inner_model.endogenous(), :]
@@ -311,7 +326,7 @@ class Bootstrap:
             self.__cl_path_coef = {f"cl_path{i}": cl_path_coef[i] for i in range(len(cl_path_coef))}
             self.__cl_effects = {f"cl_effect_{i}": cl_effects[i] for i in range(len(cl_effects))}
             self.__cl_path_coef_recalc = {f"cl_path_recalc_{i}": cl_path_coef_recalc[i] for i in range(len(cl_path_coef_recalc))}
-            self.__cl_effects_recalc = {f"boot_effect_recalc_{i}": cl_effects_recalc[i] for i in range(len(cl_effects_recalc))}
+            self.__cl_effects_recalc = {f"cl_effects_recalc_{i}": cl_effects_recalc[i] for i in range(len(cl_effects_recalc))}
             self.__cl_scores = {f"cl_scores_{i}": cl_scores[i] for i in range(len(cl_scores))}
             self.__cl_loadings = {f"cl_loadings_{i}": cl_loadings[i] for i in range(len(cl_loadings))}
             self.__cl_weights = {f"cl_weights_{i}": cl_weights[i] for i in range(len(cl_weights))}
@@ -319,7 +334,7 @@ class Bootstrap:
             self.__di_path_coef = {f"di_path{i}": di_path_coef[i] for i in range(len(di_path_coef))}
             self.__di_effects = {f"di_effect_{i}": di_effects[i] for i in range(len(di_effects))}
             self.__di_path_coef_recalc = {f"di_path_recalc_{i}": di_path_coef_recalc[i] for i in range(len(di_path_coef_recalc))}
-            self.__di_effects_recalc = {f"boot_effect_recalc_{i}": di_effects_recalc[i] for i in range(len(di_effects_recalc))}
+            self.__di_effects_recalc = {f"di_effects_recalc_{i}": di_effects_recalc[i] for i in range(len(di_effects_recalc))}
             self.__di_scores = {f"di_scores_{i}": di_scores[i] for i in range(len(di_scores))}
             self.__di_loadings = {f"di_loadings_{i}": di_loadings[i] for i in range(len(di_loadings))}
             self.__di_weights = {f"di_weights_{i}": di_weights[i] for i in range(len(di_weights))}
@@ -367,8 +382,16 @@ class Bootstrap:
         return self.__loading
 
     def seed(self) -> int:
-        """The seed used for random number generatory"""
+        """The seed used for random number generation.
+
+        Note: results are only reproducible when the same seed is used with the
+        same number of processes, since iterations are split across workers.
+        """
         return self.__seed
+
+    def failures(self) -> int:
+        """The number of bootstrap iterations that failed and were dropped."""
+        return self.__failures
 
     def boot_scores(self) -> dict:
         """The bootstrap scores"""
@@ -385,7 +408,6 @@ class Bootstrap:
         return self.__raw_loadings
 
     def boot_inner_model(self):
-        print("new")
         return self.__boot_inner_model
     
     @require_sign_change
@@ -429,8 +451,6 @@ class Bootstrap:
         return self.__cl_effects_recalc
     @require_sign_change
     def boot_di_weights(self):
-        if not self.__sign_change:
-            raise ValueError("Sign change is not enabled. Cannot return sign change objects.")
         return self.__di_weights
 
     @require_sign_change        
@@ -472,3 +492,15 @@ class Bootstrap:
     @require_sign_change
     def boot_cs_path_coef(self):
         return self.__cs_path_coef
+
+    @require_sign_change
+    def boot_cs_effects(self):
+        return self.__cs_effects
+
+    @require_sign_change
+    def boot_cs_effects_recalc(self):
+        return self.__cs_effects_recalc
+
+    @require_sign_change
+    def boot_cs_path_coef_recalc(self):
+        return self.__cs_path_coef_recalc

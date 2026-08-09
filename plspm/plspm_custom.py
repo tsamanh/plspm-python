@@ -56,8 +56,8 @@ class Plspm_Custom:
             iterations = 100
         assert tolerance > 0
         assert scheme in Scheme
-        if bootstrap_iterations < 10:
-            bootstrap_iterations = 100
+        # if bootstrap_iterations < 10:
+        #     bootstrap_iterations = 100
         # assert bootstrap_iterations % processes == 0
 
         estimator = Estimator(config)

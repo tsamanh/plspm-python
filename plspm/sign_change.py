@@ -45,13 +45,8 @@ def _boot_naive_sign_change(boot_weights, boot_loadings, boot_path, original_wei
         pairs = [(sch_boot_weights, original_weights), (sch_boot_loadings, original_loadings), (sch_boot_path, original_path)]
         for i, (df_boot, df_original) in enumerate(pairs, start = 1):
             if isinstance(df_boot, pd.Series):
-                boot_sign = np.sign(df_boot)
-                original_sign = np.sign(df_original)
-                aligned_boot, aligned_original = boot_sign.align(original_sign)
-
-                if not (aligned_boot != aligned_original).any():
-                    flipped = np.abs(df_boot.loc[aligned_original.index]) * np.sign(aligned_original)
-                    df_boot.loc[aligned_boot.index] = flipped
+                aligned_boot, aligned_original = df_boot.align(df_original, join="inner")
+                df_boot.loc[aligned_boot.index] = np.abs(aligned_boot) * np.sign(aligned_original)
 
             elif isinstance(df_boot, pd.DataFrame):
                 # Align both index and columns before operating
@@ -207,7 +202,6 @@ def _boot_dominant_indicator_change(config: c.Config, boot_inner_model: im.Inner
             regression = sm.OLS(boot_di_scores.loc[:, dv], exogenous).fit()
             boot_di_path_coefficients_recalc.loc[dv, ivs] = regression.params
         boot_di_effects_recalc = _effects(boot_di_path_coefficients_recalc)
-
         return boot_di_scores, boot_di_weights, boot_di_loadings, boot_di_path_coefficients, boot_di_effects, boot_di_path_coefficients_recalc, boot_di_effects_recalc
     except:
         path = boot_inner_model.path_coefficients()
@@ -243,12 +237,24 @@ def _boot_construct_scores_change(config: c.Config, boot_inner_model: im.InnerMo
         for lv, indi in measurement_model.items():
             w0 = original_outer_weights.loc[indi]
             new_scores = (boot_data[indi] @ w0).to_numpy()
-            score_boot = boot_cs_score[lv].to_numpy()
-            sum_of_scores = new_scores + score_boot
-            diff_of_scores = new_scores - score_boot
+            score_boot = boot_cs_scores[lv].to_numpy()
+            # sum_of_scores = new_scores + score_boot
+            # diff_of_scores = new_scores - score_boot
 
-            if abs(sum_of_scores.sum()) < abs(diff_of_scores.sum()):
-                #Multiply the bootstrapped loadings, scores, weights by -1
+            # if abs(sum_of_scores.sum()) < abs(diff_of_scores.sum()):
+            #     #Multiply the bootstrapped loadings, scores, weights by -1
+            #     boot_cs_weights.loc[:,indi] = boot_weights.loc[:,indi] * (-1)
+            #     boot_cs_loadings.loc[:,indi] = boot_loadings.loc[:,indi] * (-1)
+            #     boot_cs_scores.loc[:,lv] = boot_scores.loc[:,lv] * (-1)
+            #     flag[lv] = True
+            # else:
+            #     flag[lv] = False
+            r = np.corrcoef(new_scores, score_boot)[0,1]
+
+            if (np.isnan(r)):
+                r = np.sign(np.dot(new_scores - new_scores.mean(), score_boot - score_boot.mean()))
+            
+            if (r < 0):
                 boot_cs_weights.loc[:,indi] = boot_weights.loc[:,indi] * (-1)
                 boot_cs_loadings.loc[:,indi] = boot_loadings.loc[:,indi] * (-1)
                 boot_cs_scores.loc[:,lv] = boot_scores.loc[:,lv] * (-1)
@@ -285,10 +291,10 @@ def _boot_construct_scores_change(config: c.Config, boot_inner_model: im.InnerMo
             regression = sm.OLS(boot_cs_scores.loc[:, dv], exogenous).fit()
             boot_cs_path_coefficients_recalc.loc[dv, ivs] = regression.params
         boot_cs_effects_recalc = _effects(boot_cs_path_coefficients_recalc)
-
         return boot_cs_scores, boot_cs_weights, boot_cs_loadings, boot_cs_path_coefficients, boot_cs_effects, boot_cs_path_coefficients_recalc, boot_cs_effects_recalc
     except:
         path = boot_inner_model.path_coefficients()
         effects = _effects(path)
-        return boot_scores, boot_weights, boot_loadings, path, effects, path, effects
+        boot_cs_scores = pd.DataFrame("E", index=boot_cs_scores.index, columns=boot_cs_scores.columns)
+        return boot_cs_scores, boot_weights, boot_loadings, path, effects, path, effects
 
