@@ -302,7 +302,8 @@ class Config:
                 scale_values = metric_data.stack().std() * np.sqrt((metric_data.shape[0] - 1) / metric_data.shape[0])
                 return util.treat(metric_data, scale_values=scale_values)
             else:
-                return util.treat(metric_data, scale=False)
+                # return util.treat(metric_data, scale=False)
+                return util.treat(metric_data) # if you put scale=False the function util.treat doesn't standardize the metric_data (it only centers them), whether you provide scale_values or not, so the result is not aligned with commercial sofware like SmartPLS
         else:
             if None in self.__mv_scales.values():
                 raise TypeError("If you supply a scale for any MV, you must either supply a scale for all of them or specify a default scale.")
